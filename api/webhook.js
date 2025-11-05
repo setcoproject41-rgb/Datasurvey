@@ -274,9 +274,20 @@ Apakah Anda ingin mengirim laporan ini?
       return bot.sendMessage(chatId, "Tidak ada data untuk segmentasi ini.");
 
     let msg = `📊 *REPORT ${segName.toUpperCase()}*\n\n`;
-    data.forEach((d) => {
-      msg += `🔧 *${d.designator}*\nMaterial: ${d.nilai_material ?? 0}\nJasa: ${d.nilai_jasa ?? 0}\nTotal: ${d.total ?? 0}\n\n`;
-    });
+
+data.forEach((d) => {
+  const material = d.nilai_material ? `Rp${Number(d.nilai_material).toLocaleString("id-ID")}` : "-";
+  const jasa = d.nilai_jasa ? `Rp${Number(d.nilai_jasa).toLocaleString("id-ID")}` : "-";
+  const total = d.total ? `Rp${Number(d.total).toLocaleString("id-ID")}` : "-";
+
+  msg += `🔧 *${d.designator}*\n` +
+         `📦 Material : ${material}\n` +
+         `🧰 Jasa     : ${jasa}\n` +
+         `💰 Total    : *${total}*\n\n`;
+});
+
+await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+
 
     await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
   }
@@ -341,16 +352,22 @@ Apakah Anda ingin mengirim laporan ini?
     if (error || !data)
       return bot.sendMessage(chatId, "❌ Data designator tidak ditemukan.");
 
-    const msg = `
-📘 *DETAIL*
-Designator: *${designator}*
-Satuan: ${data.satuan}
-Uraian: ${data.uraian_pekerjaan}
-Nilai Material: ${data.nilai_material}
-Nilai Jasa: ${data.nilai_jasa}
+const nilaiMaterial = data.nilai_material ? `Rp${Number(data.nilai_material).toLocaleString("id-ID")}` : "-";
+const nilaiJasa = data.nilai_jasa ? `Rp${Number(data.nilai_jasa).toLocaleString("id-ID")}` : "-";
+
+const msg = `
+📘 *DETAIL DESIGNATOR*
+
+🔧 Designator : *${designator}*
+📏 Satuan     : ${data.satuan || "-"}
+📝 Uraian     : ${data.uraian_pekerjaan || "-"}
+📦 Material   : ${nilaiMaterial}
+🧰 Jasa       : ${nilaiJasa}
+💰 Total      : *Rp${Number((data.nilai_material || 0) + (data.nilai_jasa || 0)).toLocaleString("id-ID")}*
 `;
 
-    await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
+
   }
 
   res.status(200).send("OK");
