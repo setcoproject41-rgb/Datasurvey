@@ -128,12 +128,12 @@ else if (
   data.keterangan = message.text;
 
   // Ringkasan laporan
-  const summary = `
+const summary = `
 🧾 *Konfirmasi Laporan Anda:*
 
 📍 Segmentasi: *${data.segmentasi}*
 🔧 Designator: *${data.designator}*
-🗺️ Lokasi: ${data.lokasi_latitude}, ${data.lokasi_longitude}
+🗺️ Lokasi: ${data.lokasi}
 📝 Keterangan: ${data.keterangan}
 📷 Jumlah Foto: ${data.foto_urls?.length || 0}
 
@@ -162,18 +162,17 @@ else if (callback_query?.data === "konfirmasi_kirim") {
     return bot.sendMessage(chatId, "⚠️ Tidak ada data laporan yang siap dikirim.");
   }
 
-  // Simpan ke Supabase
-  const { error } = await supabase.from("data_survey").insert([
-    {
-      telegram_user_id: userId,
-      segmentasi: data.segmentasi,
-      designator: data.designator,
-      folder_path: `${data.segmentasi}/${data.designator}`,
-      foto_url: data.foto_urls.join(", "),
-      lokasi: `${data.lokasi_latitude},${data.lokasi_longitude}`,
-      keterangan: data.keterangan,
-    },
-  ]);
+const { error } = await supabase.from("data_survey").insert([
+  {
+    telegram_user_id: userId,
+    segmentasi: data.segmentasi,
+    designator: data.designator,
+    folder_path: `${data.segmentasi}/${data.designator}`,
+    foto_url: data.foto_urls.join(", "),
+    lokasi: data.lokasi, // ganti baris ini
+    keterangan: data.keterangan,
+  },
+]);
 
   if (error) {
     console.error(error);
