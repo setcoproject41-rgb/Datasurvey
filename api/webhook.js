@@ -61,18 +61,22 @@ export default async function handler(req, res) {
     );
   }
 
-  // --- pilih designator ---
   else if (callback_query?.data.startsWith("des_")) {
-    const chatId = callback_query.message.chat.id;
-    const designator = decodeURIComponent(callback_query.data.replace("des_", ""));
-    userState[chatId].designator = designator;
+  const chatId = callback_query.message.chat.id;
+  const designator = decodeURIComponent(callback_query.data.replace("des_", ""));
 
-    // Buat folder path otomatis
-    userState[chatId].folder_path = `${userState[chatId].segmentasi}/${designator}`;
-
-    await bot.sendMessage(chatId, "📸 Silakan kirim foto eviden pekerjaan.");
+  // Jika state belum ada (misal user lompat langkah), buat dulu defaultnya
+  if (!userState[chatId]) {
+    userState[chatId] = {
+      segmentasi: "Umum", // fallback biar tidak error
+    };
   }
 
+  userState[chatId].designator = designator;
+  userState[chatId].folder_path = `${userState[chatId].segmentasi}/${designator}`;
+
+  await bot.sendMessage(chatId, "📸 Silakan kirim foto eviden pekerjaan.");
+}
   // --- kirim foto (upload ke Supabase Storage "evidence") ---
   else if (message?.photo) {
     const chatId = message.chat.id;
