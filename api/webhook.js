@@ -231,7 +231,7 @@ else if (callback_query?.data === "konfirmasi_kirim") {
   const { data: designatorData, error: designatorError } = await supabase
     .from("designator")
     .select("nilai_material, nilai_jasa")
-    .eq("Designator", data.designator)
+    .eq("designator", data.designator)
     .single();
 
   if (designatorError || !designatorData) {
