@@ -73,20 +73,38 @@ export default async function handler(req, res) {
     await bot.sendMessage(chatId, "📸 Silakan kirim foto eviden pekerjaan.");
   }
 
-  // --- kirim foto ---
-  else if (message?.photo) {
-    const chatId = message.chat.id;
-    const fileId = message.photo[message.photo.length - 1].file_id;
-    const file = await bot.getFile(fileId);
-    const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
+// --- kirim foto (bisa lebih dari satu) ---
+else if (message?.photo) {
+  const chatId = message.chat.id;
+  const fileId = message.photo[message.photo.length - 1].file_id;
+  const file = await bot.getFile(fileId);
+  const fileUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${file.file_path}`;
 
-    if (!userState[chatId]) userState[chatId] = {};
-    userState[chatId].foto_url = fileUrl;
+  if (!userState[chatId]) userState[chatId] = {};
+  if (!userState[chatId].foto_urls) userState[chatId].foto_urls = [];
 
-    await bot.sendMessage(chatId, "📍 Sekarang kirim *lokasi* Anda (gunakan share location).", {
-      parse_mode: "Markdown",
-    });
-  }
+  userState[chatId].foto_urls.push(fileUrl);
+
+  await bot.sendMessage(
+    chatId,
+    "📸 Foto tersimpan. Kirim foto lain jika ada, atau ketik *selesai* bila sudah cukup.",
+    { parse_mode: "Markdown" }
+  );
+}
+
+// --- setelah semua foto selesai, user ketik 'selesai' ---
+else if (
+  message?.text?.toLowerCase() === "selesai" &&
+  userState[message.chat.id]?.foto_urls?.length
+) {
+  const chatId = message.chat.id;
+
+  await bot.sendMessage(
+    chatId,
+    "📍 Sekarang kirim *lokasi* Anda (gunakan fitur share location).",
+    { parse_mode: "Markdown" }
+  );
+}
 
   // --- kirim lokasi ---
   else if (message?.location) {
@@ -99,43 +117,79 @@ export default async function handler(req, res) {
     await bot.sendMessage(chatId, "✏️ Terakhir, kirim keterangan tambahan:");
   }
 
-  // --- kirim keterangan ---
-  else if (
-    message?.text &&
-    !message.text.startsWith("/") &&
-    userState[message.chat.id]?.designator
-  ) {
-    const chatId = message.chat.id;
-    const userId = message.from.id;
-    const data = userState[chatId];
-    data.keterangan = message.text;
+// --- kirim keterangan ---
+else if (
+  message?.text &&
+  !message.text.startsWith("/") &&
+  userState[message.chat.id]?.designator
+) {
+  const chatId = message.chat.id;
+  const data = userState[chatId];
+  data.keterangan = message.text;
 
-    // Simpan ke Supabase
-    const { error } = await supabase.from("data_survey").insert([
-      {
-        telegram_user_id: userId,
-        segmentasi: data.segmentasi,
-        designator: data.designator,
-        folder_path: data.folder_path,
-        foto_url: data.foto_url,
-        lokasi: data.lokasi,
-        keterangan: data.keterangan,
-      },
-    ]);
+  // Ringkasan laporan
+  const summary = `
+🧾 *Konfirmasi Laporan Anda:*
 
-    if (error) {
-      console.error(error);
-      await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
-    } else {
-      await bot.sendMessage(
-        chatId,
-        `✅ Laporan berhasil dikirim!\n\n📁 Folder: *${data.folder_path}*`,
-        { parse_mode: "Markdown" }
-      );
-    }
+📍 Segmentasi: *${data.segmentasi}*
+🔧 Designator: *${data.designator}*
+🗺️ Lokasi: ${data.lokasi_latitude}, ${data.lokasi_longitude}
+📝 Keterangan: ${data.keterangan}
+📷 Jumlah Foto: ${data.foto_urls?.length || 0}
 
-    delete userState[chatId];
+Apakah Anda ingin mengirim laporan ini?
+`;
+
+  await bot.sendMessage(chatId, summary, {
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "✅ Kirim", callback_data: "konfirmasi_kirim" },
+          { text: "❌ Batal", callback_data: "konfirmasi_batal" },
+        ],
+      ],
+    },
+  });
+}
+// --- konfirmasi kirim ---
+else if (callback_query?.data === "konfirmasi_kirim") {
+  const chatId = callback_query.message.chat.id;
+  const userId = callback_query.from.id;
+  const data = userState[chatId];
+
+  if (!data) {
+    return bot.sendMessage(chatId, "⚠️ Tidak ada data laporan yang siap dikirim.");
   }
 
+  // Simpan ke Supabase
+  const { error } = await supabase.from("data_survey").insert([
+    {
+      telegram_user_id: userId,
+      segmentasi: data.segmentasi,
+      designator: data.designator,
+      folder_path: `${data.segmentasi}/${data.designator}`,
+      foto_url: data.foto_urls.join(", "),
+      lokasi: `${data.lokasi_latitude},${data.lokasi_longitude}`,
+      keterangan: data.keterangan,
+    },
+  ]);
+
+  if (error) {
+    console.error(error);
+    await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
+  } else {
+    await bot.sendMessage(chatId, "✅ Laporan berhasil dikirim! Terima kasih 🙏");
+  }
+
+  delete userState[chatId];
+}
+
+// --- konfirmasi batal ---
+else if (callback_query?.data === "konfirmasi_batal") {
+  const chatId = callback_query.message.chat.id;
+  delete userState[chatId];
+  await bot.sendMessage(chatId, "❌ Laporan dibatalkan.");
+    }
   res.status(200).send("OK");
 }
