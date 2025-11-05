@@ -37,10 +37,11 @@ export default async function handler(req, res) {
     });
   }
   // --- pilih segmentasi ---
+// --- pilih segmentasi ---
 else if (callback_query?.data.startsWith("seg_")) {
-  const segId = callback_query.data.split("_")[1];
+  const segName = callback_query.data.split("_")[1];
   const chatId = callback_query.message.chat.id;
-  userState[chatId] = { segmentasi_id: segId };
+  userState[chatId] = { segmentasi: segName };
 
   // Ambil semua designator (karena sama untuk semua segmentasi)
   const { data: designators, error } = await supabase
@@ -49,18 +50,23 @@ else if (callback_query?.data.startsWith("seg_")) {
 
   if (error) {
     console.error(error);
-    return bot.sendMessage(chatId, "Terjadi kesalahan mengambil data designator.");
+    return bot.sendMessage(chatId, "❌ Gagal mengambil data designator dari server.");
   }
 
   if (!designators?.length) {
-    return bot.sendMessage(chatId, "Tidak ada data designator di sistem.");
+    return bot.sendMessage(chatId, "Tidak ada data designator tersedia.");
   }
 
+  // Hanya tampilkan kolom 'Designator' sebagai tombol
   const buttons = designators.map((d) => [
-    { text: d.Designator, callback_data: `des_${d.id}` },
+    {
+      text: d.Designator,
+      callback_data: `des_${encodeURIComponent(d.Designator)}`,
+    },
   ]);
 
-  await bot.sendMessage(chatId, "Pilih designator:", {
+  await bot.sendMessage(chatId, `📍 Segmentasi *${segName}* dipilih.\nSekarang pilih designator:`, {
+    parse_mode: "Markdown",
     reply_markup: { inline_keyboard: buttons },
   });
 }
