@@ -45,7 +45,7 @@ else if (callback_query?.data.startsWith("seg_")) {
   // Ambil semua designator (karena sama untuk semua segmentasi)
   const { data: designators, error } = await supabase
     .from("designator")
-    .select("id, Designator");
+    .select("Designator");
 
   if (error) {
     console.error(error);
