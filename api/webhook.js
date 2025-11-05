@@ -273,7 +273,7 @@ Apakah Anda ingin mengirim laporan ini?
     if (error || !data?.length)
       return bot.sendMessage(chatId, "Tidak ada data untuk segmentasi ini.");
 
-    let msg = `📊 *REPORT ${segName.toUpperCase()}*\n\n`;
+    let msg = `📊 *REPORT\n ${segName.toUpperCase()}*\n\n`;
 
 data.forEach((d) => {
   const material = d.nilai_material ? `Rp${Number(d.nilai_material).toLocaleString("id-ID")}` : "-";
@@ -356,7 +356,7 @@ const nilaiMaterial = data.nilai_material ? `Rp${Number(data.nilai_material).toL
 const nilaiJasa = data.nilai_jasa ? `Rp${Number(data.nilai_jasa).toLocaleString("id-ID")}` : "-";
 
 const msg = `
-📘 *DETAIL DESIGNATOR*
+```📘 *DETAIL DESIGNATOR*
 
 🔧 Designator : *${designator}*
 📏 Satuan     : ${data.satuan || "-"}
@@ -364,7 +364,7 @@ const msg = `
 📦 Material   : ${nilaiMaterial}
 🧰 Jasa       : ${nilaiJasa}
 💰 Total      : *Rp${Number((data.nilai_material || 0) + (data.nilai_jasa || 0)).toLocaleString("id-ID")}*
-`;
+````;
 
 await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
