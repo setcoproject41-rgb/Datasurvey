@@ -36,30 +36,34 @@ export default async function handler(req, res) {
       reply_markup: { inline_keyboard: buttons },
     });
   }
-
   // --- pilih segmentasi ---
-  else if (callback_query?.data.startsWith("seg_")) {
-    const segId = callback_query.data.split("_")[1];
-    const chatId = callback_query.message.chat.id;
-    userState[chatId] = { segmentasi_id: segId };
+else if (callback_query?.data.startsWith("seg_")) {
+  const segId = callback_query.data.split("_")[1];
+  const chatId = callback_query.message.chat.id;
+  userState[chatId] = { segmentasi_id: segId };
 
-    const { data: designators } = await supabase
-      .from("designator")
-      .select("id, Designator")
-      .eq("segmentasi_id", segId);
+  // Ambil semua designator (karena sama untuk semua segmentasi)
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select("id, Designator");
 
-    if (!designators?.length) {
-      return bot.sendMessage(chatId, "Tidak ada designator untuk segmentasi ini.");
-    }
-
-    const buttons = designators.map((d) => [
-      { text: d.Designator, callback_data: `des_${d.id}` },
-    ]);
-
-    await bot.sendMessage(chatId, "Pilih designator:", {
-      reply_markup: { inline_keyboard: buttons },
-    });
+  if (error) {
+    console.error(error);
+    return bot.sendMessage(chatId, "Terjadi kesalahan mengambil data designator.");
   }
+
+  if (!designators?.length) {
+    return bot.sendMessage(chatId, "Tidak ada data designator di sistem.");
+  }
+
+  const buttons = designators.map((d) => [
+    { text: d.Designator, callback_data: `des_${d.id}` },
+  ]);
+
+  await bot.sendMessage(chatId, "Pilih designator:", {
+    reply_markup: { inline_keyboard: buttons },
+  });
+}
 
   // --- pilih designator ---
   else if (callback_query?.data.startsWith("des_")) {
