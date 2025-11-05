@@ -356,15 +356,15 @@ const nilaiMaterial = data.nilai_material ? `Rp${Number(data.nilai_material).toL
 const nilaiJasa = data.nilai_jasa ? `Rp${Number(data.nilai_jasa).toLocaleString("id-ID")}` : "-";
 
 const msg = `
-```📘 *DETAIL DESIGNATOR*
+📘 *DETAIL DESIGNATOR*
 
 🔧 Designator : *${designator}*
-📏 Satuan     : ${data.satuan || "-"}
-📝 Uraian     : ${data.uraian_pekerjaan || "-"}
+📏 Satuan     : ${data.satuan || "-"}\n
+📝 Uraian     : ${data.uraian_pekerjaan || "-"}\n
 📦 Material   : ${nilaiMaterial}
 🧰 Jasa       : ${nilaiJasa}
 💰 Total      : *Rp${Number((data.nilai_material || 0) + (data.nilai_jasa || 0)).toLocaleString("id-ID")}*
-````;
+`;
 
 await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
