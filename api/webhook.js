@@ -217,87 +217,21 @@ Apakah Anda ingin mengirim laporan ini?
     });
   }
 
-// --- konfirmasi kirim ---
-else if (callback_query?.data === "konfirmasi_kirim") {
-  const chatId = callback_query.message.chat.id;
-  const userId = callback_query.from.id;
-  const data = userState[chatId];
+  // --- konfirmasi kirim ---
+  else if (callback_query?.data === "lapor_kirim") {
+    const chatId = callback_query.message.chat.id;
+    const data = userState[chatId];
 
-  if (!data) {
-    return bot.sendMessage(chatId, "⚠️ Tidak ada data laporan yang siap dikirim.");
+    if (!data?.draft_id) return bot.sendMessage(chatId, "⚠️ Tidak ada draft aktif.");
+
+    await supabase
+      .from("data_survey")
+      .update({ created_at: new Date() })
+      .eq("id", data.draft_id);
+
+    await bot.sendMessage(chatId, "✅ Laporan berhasil dikirim! Terima kasih 🙏");
+    delete userState[chatId];
   }
-
-  // 🔹 Ambil nilai dari tabel designator
-const { data: designatorData, error: designatorError } = await supabase
-  .from("designator")
-  .select("nilai_material, nilai_jasa")
-  .eq("designator", data.designator)
-  .single();
-
-if (designatorError || !designatorData) {
-  console.error(designatorError);
-  return bot.sendMessage(chatId, "❌ Gagal mengambil data nilai dari designator.");
-}
-
-// Bersihkan nilai agar aman
-const nilai_material = Number(designatorData.nilai_material) || null;
-const nilai_jasa = Number(designatorData.nilai_jasa) || null;
-const total = (nilai_material || 0) + (nilai_jasa || 0);
-
-// 🔹 Siapkan teks laporan dinamis
-let nilaiText = "";
-if (nilai_material !== null) nilaiText += `\n💰 Nilai Material: ${nilai_material}`;
-if (nilai_jasa !== null) nilaiText += `\n🔧 Nilai Jasa: ${nilai_jasa}`;
-nilaiText += `\n📊 Total: ${total}`;
-
-// 🔹 Simpan ke tabel data_survey
-const { error } = await supabase.from("data_survey").insert([
-  {
-    telegram_user_id: userId,
-    segmentasi: data.segmentasi,
-    designator: data.designator,
-    folder_path: `${data.segmentasi}/${data.designator}`,
-    foto_url: data.foto_urls.join(", "),
-    lokasi: data.lokasi,
-    keterangan: data.keterangan,
-    nilai_material,
-    nilai_jasa,
-    total,
-  },
-]);
-
-if (error) {
-  console.error(error);
-  await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
-} else {
-  await bot.sendMessage(
-    chatId,
-    `✅ Laporan berhasil dikirim!\n${nilaiText}`,
-    { parse_mode: "Markdown" }
-  );
-}
-
-delete userState[chatId];
-
-if (error) {
-  console.error(error);
-  await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
-} else {
-  await bot.sendMessage(
-    chatId,
-    `✅ Laporan berhasil dikirim!\n${nilaiText}`,
-    { parse_mode: "Markdown" }
-
-
-  if (error) {
-    console.error(error);
-    await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
-  } else {
-    await bot.sendMessage(chatId, "✅ Laporan berhasil dikirim! Nilai otomatis sudah dihitung 🙏");
-  }
-
-  delete userState[chatId];
-}
 
   // --- batal kirim ---
   else if (callback_query?.data === "lapor_batal") {
