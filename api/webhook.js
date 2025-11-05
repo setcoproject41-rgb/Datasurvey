@@ -228,18 +228,6 @@ else if (callback_query?.data === "konfirmasi_kirim") {
   }
 
   // 🔹 Ambil nilai dari tabel designator
-  const { data: designatorData, error: designatorError } = await supabase
-    .from("designator")
-    .select("nilai_material, nilai_jasa")
-    .eq("designator", data.designator)
-    .single();
-
-  if (designatorError || !designatorData) {
-    console.error(designatorError);
-    return bot.sendMessage(chatId, "❌ Gagal mengambil data nilai dari designator.");
-  }
-
-  // 🔹 Ambil nilai dari tabel designator
 const { data: designatorData, error: designatorError } = await supabase
   .from("designator")
   .select("nilai_material, nilai_jasa")
@@ -277,6 +265,19 @@ const { error } = await supabase.from("data_survey").insert([
     total,
   },
 ]);
+
+if (error) {
+  console.error(error);
+  await bot.sendMessage(chatId, "❌ Gagal menyimpan data ke server.");
+} else {
+  await bot.sendMessage(
+    chatId,
+    `✅ Laporan berhasil dikirim!\n${nilaiText}`,
+    { parse_mode: "Markdown" }
+  );
+}
+
+delete userState[chatId];
 
 if (error) {
   console.error(error);
