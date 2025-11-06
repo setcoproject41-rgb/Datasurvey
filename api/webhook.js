@@ -369,23 +369,29 @@ const msg = `
 await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
   }
+if (message?.text === "/reload") {
+  try {
+    await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
+
+    const { data: designators, error } = await supabase
+      .from("designator")
+      .select("designator");
+
+    if (error) {
+      console.error("Error mengambil data:", error);
+      await bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");
+      return;
+    }
+
+    await bot.sendMessage(
+      message.chat.id,
+      `✅ Berhasil memuat ulang ${designators.length} data designator.`,
+    );
+  } catch (err) {
+    console.error("Error di perintah /reload:", err);
+    await bot.sendMessage(message.chat.id, "⚠️ Terjadi kesalahan saat memuat ulang data.");
+  }
+}
 
   res.status(200).send("OK");
-}
-else if (message?.text === "/reload") {
-  await bot.sendMessage(message.chat.id, "🔄 Data designator diperbarui dari Supabase...");
-  
-  const { data: designators, error } = await supabase
-    .from("designator")
-    .select("designator");
-
-  if (error) {
-    console.error(error);
-    return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru.");
-  }
-
-  await bot.sendMessage(
-    message.chat.id,
-    `✅ ${designators.length} designator berhasil dimuat ulang.`,
-  );
 }
