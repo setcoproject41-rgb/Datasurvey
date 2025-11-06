@@ -102,42 +102,68 @@ else if (callback_query?.data.startsWith("lapor_cat_")) {
 
 // --- pilih designator → buat draft laporan ---
 else if (callback_query?.data.startsWith("lapor_des_")) {
-const chatId = callback_query.message.chat.id;
-const designator = decodeURIComponent(callback_query.data.replace("lapor_des_", ""));
-userState[chatId] = { designator };
+  const chatId = callback_query.message.chat.id;
+  const designator = decodeURIComponent(callback_query.data.replace("lapor_des_", ""));
 
-const folderPath = `${segId}/${designator}`;
-const { data: draftRow, error: insertErr } = await supabase
-  .from("data_survey")
-  .insert([
-    {
-      telegram_user_id: chatId,
-      segmentasi: segId,
-      designator,
-      folder_path: folderPath,
-      created_at: new Date(),
-      total: 0,
-    },
-  ])
-  .select("id")
-  .single();
+  // Ambil detail designator dari tabel designator
+  const { data: desData, error: desError } = await supabase
+    .from("designator")
+    .select("uraian_pekerjaan, nilai_material, nilai_jasa, category, satuan")
+    .eq("designator", designator)
+    .single();
 
-if (insertErr) {
-  console.error(insertErr);
-  return bot.sendMessage(chatId, "❌ Gagal membuat draft laporan.");
+  if (desError || !desData) {
+    console.error(desError);
+    return bot.sendMessage(chatId, "❌ Data designator tidak ditemukan di database.");
+  }
+
+  // hitung total otomatis
+  const nilaiMaterial = desData.nilai_material || 0;
+  const nilaiJasa = desData.nilai_jasa || 0;
+  const total = nilaiMaterial + nilaiJasa;
+
+  // buat folder path (berdasarkan kategori + nama designator)
+  const folderPath = `${desData.category}/${designator}`;
+
+  // simpan ke tabel data_survey
+  const { data: draftRow, error: insertErr } = await supabase
+    .from("data_survey")
+    .insert([
+      {
+        telegram_user_id: chatId,
+        segmentasi: desData.category, // kita pakai category sebagai segmentasi umum
+        designator: designator,
+        folder_path: folderPath,
+        nilai_material: nilaiMaterial,
+        nilai_jasa: nilaiJasa,
+        total: total,
+        created_at: new Date(),
+      },
+    ])
+    .select("id")
+    .single();
+
+  if (insertErr) {
+    console.error(insertErr);
+    return bot.sendMessage(chatId, "❌ Gagal membuat draft laporan ke database.");
+  }
+
+  // simpan state untuk melanjutkan proses upload foto dsb
+  userState[chatId] = {
+    draft_id: draftRow.id,
+    designator,
+    category: desData.category,
+    folder_path: folderPath,
+    foto_urls: [],
+  };
+
+  await bot.sendMessage(
+    chatId,
+    `✅ Designator *${designator}* dipilih.\n📸 Sekarang kirim foto eviden pekerjaan.`,
+    { parse_mode: "Markdown" }
+  );
 }
 
-userState[chatId] = {
-  draft_id: draftRow.id,
-  segmentasi_id: segId,
-  designator,
-  folder_path: folderPath,
-  foto_urls: [],
-};
-
-await bot.sendMessage(chatId, "📸 Kirim foto eviden pekerjaan.");
-
-}
 
   // --- kirim foto eviden ---
   else if (message?.photo) {
