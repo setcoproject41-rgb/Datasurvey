@@ -372,3 +372,20 @@ await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
   res.status(200).send("OK");
 }
+else if (message?.text === "/reload") {
+  await bot.sendMessage(message.chat.id, "🔄 Data designator diperbarui dari Supabase...");
+  
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select("designator");
+
+  if (error) {
+    console.error(error);
+    return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru.");
+  }
+
+  await bot.sendMessage(
+    message.chat.id,
+    `✅ ${designators.length} designator berhasil dimuat ulang.`,
+  );
+}
