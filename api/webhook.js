@@ -76,38 +76,35 @@ await bot.sendMessage(chatId, "Pilih kategori:", {
 
 // --- pilih category → tampilkan designator ---
 else if (callback_query?.data.startsWith("lapor_cat_")) {
-const chatId = callback_query.message.chat.id;
-const category = decodeURIComponent(callback_query.data.replace("lapor_cat_", ""));
+  const chatId = callback_query.message.chat.id;
+  const category = decodeURIComponent(callback_query.data.replace("lapor_cat_", ""));
+  userState[chatId] = { category }; // simpan category di state
 
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select("designator")
+    .eq("category", category);
 
-const { data: designators, error } = await supabase
-  .from("designator")
-  .select("designator")
-  .eq("category", category);
+  if (error || !designators?.length)
+    return bot.sendMessage(chatId, "❌ Tidak ada designator di kategori ini.");
 
-if (error || !designators?.length)
-  return bot.sendMessage(chatId, "❌ Tidak ada designator di kategori ini.");
+  const buttons = designators.map((d) => [
+    { text: d.designator, callback_data: `lapor_des_${encodeURIComponent(d.designator)}` },
+  ]);
 
-const buttons = designators.map((d) => [
-  { text: d.designator, callback_data: `lapor_des_${encodeURIComponent(d.designator)}` },
-]);
-
-await bot.sendMessage(
-  chatId,
-  `📁 Kategori *${category}* dipilih.\nPilih designator:`,
-  { parse_mode: "Markdown", reply_markup: { inline_keyboard: buttons } }
-);
-
+  await bot.sendMessage(
+    chatId,
+    `📁 Kategori *${category}* dipilih.\nPilih designator:`,
+    { parse_mode: "Markdown", reply_markup: { inline_keyboard: buttons } }
+  );
 }
+
 
 // --- pilih designator → buat draft laporan ---
 else if (callback_query?.data.startsWith("lapor_des_")) {
 const chatId = callback_query.message.chat.id;
 const designator = decodeURIComponent(callback_query.data.replace("lapor_des_", ""));
-const segId = userState[chatId]?.segmentasi_id;
-
-if (!segId)
-  return bot.sendMessage(chatId, "⚠️ Segmentasi tidak ditemukan. Mulai dengan /start.");
+userState[chatId] = { designator };
 
 const folderPath = `${segId}/${designator}`;
 const { data: draftRow, error: insertErr } = await supabase
