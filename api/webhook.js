@@ -2,141 +2,111 @@ import TelegramBot from "node-telegram-bot-api";
 import { supabase } from "../supabaseClient.js";
 
 const bot = new TelegramBot(process.env.BOT_TOKEN);
-const userState = {}; // state sementara per user
-let cachedDesignators = []; // cache untuk reload
+const userState = {};
+let cachedDesignators = [];
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
+const { message, callback_query } = req.body;
 
-  const { message, callback_query } = req.body;
+// --------------------------- RELOAD DATA DESIGNATOR ---------------------------
+if (message?.text?.trim().toLowerCase() === "/reload") {
+await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
 
-  // --------------------------- RELOAD DATA DESIGNATOR ---------------------------
-  if (message?.text?.trim().toLowerCase() === "/reload") {
-  await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
+const { data: designators, error } = await supabase  
+  .from("designator")  
+  .select("designator, category, uraian_pekerjaan, satuan, nilai_material, nilai_jasa");  
 
-  const { data: designators, error } = await supabase
-    .from("designator")
-    .select(
-      "designator, category, uraian_pekerjaan, satuan, nilai_material, nilai_jasa"
-    );
+if (error) {  
+  console.error(error);  
+  return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");  
+}  
 
-  if (error) {
-    console.error(error);
-    return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");
-  }
+cachedDesignators = designators;  
+return bot.sendMessage(message.chat.id, `✅ ${designators.length} designator berhasil dimuat ulang dari database.`);  
 
-  cachedDesignators = designators;
-  return bot.sendMessage(message.chat.id, `✅ ${designators.length} designator berhasil dimuat ulang dari database.`);
 }
 
+// --------------------------- MENU AWAL ---------------------------
+if (message?.text === "/start") {
+const keyboard = {
+inline_keyboard: [
+[
+{ text: "📋 LAPORAN", callback_data: "menu_laporan" },
+{ text: "📊 REPORT", callback_data: "menu_report" }
+],
+[{ text: "ℹ️ INFO", callback_data: "menu_info" }]
+]
+};
 
-  // --------------------------- MENU AWAL ---------------------------
-  else if (message?.text === "/start") {
-    const keyboard = {
-      inline_keyboard: [
-        [
-          { text: "📋 LAPORAN", callback_data: "menu_laporan" },
-          { text: "📊 REPORT", callback_data: "menu_report" },
-        ],
-        [{ text: "ℹ️ INFO", callback_data: "menu_info" }],
-      ],
-    };
+await bot.sendMessage(message.chat.id, "👋 Selamat datang di *Bot Pelaporan Survey Lapangan!*\n\nSilakan pilih menu:", {  
+  parse_mode: "Markdown", reply_markup: keyboard  
+});  
+return res.status(200).send("OK");  
 
-    await bot.sendMessage(
-      message.chat.id,
-      `👋 Selamat datang di *Bot Pelaporan Survey Lapangan!*\n\nSilakan pilih menu:`,
-      { parse_mode: "Markdown", reply_markup: keyboard }
-    );
-  }
+}
 
-  // --------------------------- MENU LAPORAN ---------------------------
-  else if (callback_query?.data === "menu_laporan") {
-    const chatId = callback_query.message.chat.id;
-    const { data: segList, error } = await supabase
-      .from("segmentasi")
-      .select("id, nama_segmentasi");
-    if (error || !segList?.length)
-      return bot.sendMessage(chatId, "❌ Gagal ambil data segmentasi.");
-    const buttons = segList.map((s) => [
-      { text: s.nama_segmentasi, callback_data: `lapor_seg_${s.nama_segmentasi}` },
-    ]);
-    await bot.sendMessage(chatId, "Pilih segmentasi untuk laporan:", {
-      reply_markup: { inline_keyboard: buttons },
-    });
-  }
+// --------------------------- MENU LAPORAN ---------------------------
+else if (callback_query?.data === "menu_laporan") {
+const chatId = callback_query.message.chat.id;
 
-  // --- pilih segmentasi laporan ---
-  else if (callback_query?.data.startsWith("lapor_seg_")) {
-    const chatId = callback_query.message.chat.id;
-    const segName = callback_query.data.replace("lapor_seg_", "");
+const { data: segList, error } = await supabase  
+  .from("segmentasi")  
+  .select("id, nama_segmentasi");  
 
-    // pakai cache dulu, kalau kosong baru fetch
-    let designators = cachedDesignators;
-    if (!designators.length) {
-      const { data, error } = await supabase.from("designator").select("designator");
-      if (error || !data?.length)
-        return bot.sendMessage(chatId, "❌ Gagal mengambil data designator.");
-      designators = data;
-      cachedDesignators = data;
-    }
+if (error || !segList?.length) return bot.sendMessage(chatId, "❌ Gagal ambil data segmentasi.");  
 
-    userState[chatId] = { segmentasi: segName };
-    const buttons = designators.map((d) => [
-      {
-        text: d.designator,
-        callback_data: `lapor_des_${encodeURIComponent(d.designator)}`,
-      },
-    ]);
+const buttons = segList.map((s) => [{ text: s.nama_segmentasi, callback_data: `lapor_seg_${s.nama_segmentasi}` }]);  
 
-    await bot.sendMessage(
-      chatId,
-      `📍 Segmentasi *${segName}* dipilih.\nSekarang pilih designator:`,
-      { parse_mode: "Markdown", reply_markup: { inline_keyboard: buttons } }
-    );
-  }
+await bot.sendMessage(chatId, "Pilih segmentasi untuk laporan:", {  
+  reply_markup: { inline_keyboard: buttons }  
+});  
+return res.status(200).send("OK");  
 
-  // --- pilih designator laporan ---
-  else if (callback_query?.data.startsWith("lapor_des_")) {
-    const chatId = callback_query.message.chat.id;
-    const designator = decodeURIComponent(
-      callback_query.data.replace("lapor_des_", "")
-    );
-    const segName = userState[chatId]?.segmentasi;
-    if (!segName)
-      return bot.sendMessage(chatId, "⚠️ Segmentasi tidak ditemukan. Ulangi dengan /start.");
+}
 
-    // buat draft row di database
-    const folderPath = `${segName}/${designator}`;
-    const { data: draftRow, error: insertErr } = await supabase
-      .from("data_survey")
-      .insert([
-        {
-          telegram_user_id: chatId,
-          segmentasi: segName,
-          designator,
-          folder_path: folderPath,
-          created_at: new Date(),
-          total: 0,
-        },
-      ])
-      .select("id")
-      .single();
+// --- pilih segmentasi laporan ---
+else if (callback_query?.data?.startsWith("lapor_seg_")) {
+const chatId = callback_query.message.chat.id;
+const segName = callback_query.data.replace("lapor_seg_", "");
 
-    if (insertErr) {
-      console.error(insertErr);
-      return bot.sendMessage(chatId, "❌ Gagal membuat draft laporan.");
-    }
+const designators = cachedDesignators.length > 0 ? cachedDesignators : (await supabase.from("designator").select("designator")).data;  
 
-    userState[chatId] = {
-      draft_id: draftRow.id,
-      segmentasi: segName,
-      designator,
-      folder_path: folderPath,
-      foto_urls: [],
-    };
+if (!designators?.length) return bot.sendMessage(chatId, "❌ Gagal mengambil data designator.");  
 
-    await bot.sendMessage(chatId, "📸 Kirim foto eviden pekerjaan.");
-  }
+userState[chatId] = { segmentasi: segName };  
+
+const buttons = designators.map((d) => [{ text: d.designator, callback_data: `lapor_des_${encodeURIComponent(d.designator)}` }]);  
+
+await bot.sendMessage(chatId, `📍 Segmentasi *${segName}* dipilih.\nSekarang pilih designator:`, {  
+  parse_mode: "Markdown", reply_markup: { inline_keyboard: buttons }  
+});  
+return res.status(200).send("OK");  
+
+}
+
+// --- pilih designator laporan ---
+else if (callback_query?.data?.startsWith("lapor_des_")) {
+const chatId = callback_query.message.chat.id;
+const designator = decodeURIComponent(callback_query.data.replace("lapor_des_", ""));
+const segName = userState[chatId]?.segmentasi;
+
+if (!segName) return bot.sendMessage(chatId, "⚠️ Segmentasi tidak ditemukan. Ulangi dengan /start.");  
+
+const folderPath = `${segName}/${designator}`;  
+const { data: draftRow, error: insertErr } = await supabase  
+  .from("data_survey")  
+  .insert([{ telegram_user_id: chatId, segmentasi: segName, designator, folder_path: folderPath, created_at: new Date(), total: 0 }])  
+  .select("id")  
+  .single();  
+
+if (insertErr) { console.error(insertErr); return bot.sendMessage(chatId, "❌ Gagal membuat draft laporan."); }  
+
+userState[chatId] = { draft_id: draftRow.id, segmentasi: segName, designator, folder_path: folderPath, foto_urls: [] };  
+await bot.sendMessage(chatId, "📸 Kirim foto eviden pekerjaan.");  
+return res.status(200).send("OK");  
+
+}
 
   // --- kirim foto eviden ---
   else if (message?.photo) {
