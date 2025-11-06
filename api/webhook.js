@@ -11,32 +11,24 @@ export default async function handler(req, res) {
   const { message, callback_query } = req.body;
 
   // --------------------------- RELOAD DATA DESIGNATOR ---------------------------
-  if (message?.text === "/reload") {
-    await bot.sendMessage(
-      message.chat.id,
-      "🔄 Memuat ulang data designator dari Supabase..."
+  if (message?.text?.trim().toLowerCase() === "/reload") {
+  await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
+
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select(
+      "designator, category, uraian_pekerjaan, satuan, nilai_material, nilai_jasa"
     );
 
-    const { data: designators, error } = await supabase
-      .from("designator")
-      .select(
-        "designator, category, uraian_pekerjaan, satuan, nilai_material, nilai_jasa"
-      );
-
-    if (error) {
-      console.error(error);
-      return bot.sendMessage(
-        message.chat.id,
-        "❌ Gagal mengambil data terbaru dari Supabase."
-      );
-    }
-
-    cachedDesignators = designators;
-    return bot.sendMessage(
-      message.chat.id,
-      `✅ ${designators.length} designator berhasil dimuat ulang dari database.`
-    );
+  if (error) {
+    console.error(error);
+    return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");
   }
+
+  cachedDesignators = designators;
+  return bot.sendMessage(message.chat.id, `✅ ${designators.length} designator berhasil dimuat ulang dari database.`);
+}
+
 
   // --------------------------- MENU AWAL ---------------------------
   else if (message?.text === "/start") {
