@@ -2,14 +2,39 @@ import TelegramBot from "node-telegram-bot-api";
 import { supabase } from "../supabaseClient.js";
 
 const bot = new TelegramBot(process.env.BOT_TOKEN);
+(async () => {
+  const { data } = await supabase.from("designator").select("*");
+  if (data) cachedDesignators = data;
+})();
+
 const userState = {}; // state sementara per user
+let cachedDesignators = []; // cache designator global
+
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).send("Method Not Allowed");
 
   const { message, callback_query } = req.body;
 
-  // --------------------------- MENU AWAL ---------------------------
+  else if (message?.text === "/reload") {
+  await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
+
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select("designator, category, uraian_pekerjaan, satuan, nilai_material, nilai_jasa");
+
+  if (error) {
+    console.error(error);
+    return bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");
+  }
+
+  cachedDesignators = designators; // simpan ulang data ke cache
+  await bot.sendMessage(
+    message.chat.id,
+    `✅ ${designators.length} designator berhasil dimuat ulang dari database.`,
+  );
+}
+
   if (message?.text === "/start") {
     const keyboard = {
       inline_keyboard: [
@@ -53,9 +78,10 @@ export default async function handler(req, res) {
     const chatId = callback_query.message.chat.id;
     const segName = callback_query.data.replace("lapor_seg_", "");
 
-    const { data: designators, error } = await supabase
-      .from("designator")
-      .select("designator");
+    const designators = cachedDesignators.length
+  ? cachedDesignators
+  : (await supabase.from("designator").select("designator")).data || [];
+
 
     if (error || !designators?.length)
       return bot.sendMessage(chatId, "❌ Gagal mengambil data designator.");
@@ -369,29 +395,6 @@ const msg = `
 await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
   }
-if (message?.text === "/reload") {
-  try {
-    await bot.sendMessage(message.chat.id, "🔄 Memuat ulang data designator dari Supabase...");
-
-    const { data: designators, error } = await supabase
-      .from("designator")
-      .select("designator");
-
-    if (error) {
-      console.error("Error mengambil data:", error);
-      await bot.sendMessage(message.chat.id, "❌ Gagal mengambil data terbaru dari Supabase.");
-      return;
-    }
-
-    await bot.sendMessage(
-      message.chat.id,
-      `✅ Berhasil memuat ulang ${designators.length} data designator.`,
-    );
-  } catch (err) {
-    console.error("Error di perintah /reload:", err);
-    await bot.sendMessage(message.chat.id, "⚠️ Terjadi kesalahan saat memuat ulang data.");
-  }
-}
 
   res.status(200).send("OK");
 }
