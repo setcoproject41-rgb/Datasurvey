@@ -28,50 +28,70 @@ export default async function handler(req, res) {
     );
   }
 
-  // --------------------------- MENU LAPORAN ---------------------------
-  else if (callback_query?.data === "menu_laporan") {
-    const chatId = callback_query.message.chat.id;
+ // --- klik menu laporan ---
+else if (callback_query?.data === "menu_laporan") {
+  const chatId = callback_query.message.chat.id;
+  const { data: segList, error } = await supabase
+    .from("segmentasi")
+    .select("id, nama_segmentasi");
+  if (error || !segList?.length) return bot.sendMessage(chatId, "❌ Gagal ambil data segmentasi.");
 
-    const { data: segList, error } = await supabase
-      .from("segmentasi")
-      .select("id, nama_segmentasi");
+  const buttons = segList.map(s => [
+    { text: s.nama_segmentasi, callback_data: `lapor_seg_${encodeURIComponent(s.nama_segmentasi)}` }
+  ]);
 
-    if (error || !segList?.length)
-      return bot.sendMessage(chatId, "❌ Gagal ambil data segmentasi.");
+  await bot.sendMessage(chatId, "Pilih segmentasi:", { reply_markup: { inline_keyboard: buttons } });
+}
 
-    const buttons = segList.map((s) => [
-      { text: s.nama_segmentasi, callback_data: `lapor_seg_${s.nama_segmentasi}` },
-    ]);
+  // --- klik segmentasi laporan ---
+else if (callback_query?.data.startsWith("lapor_seg_")) {
+  const chatId = callback_query.message.chat.id;
+  const segName = decodeURIComponent(callback_query.data.replace("lapor_seg_", ""));
+  userState[chatId] = { segmentasi: segName };
 
-    await bot.sendMessage(chatId, "Pilih segmentasi untuk laporan:", {
-      reply_markup: { inline_keyboard: buttons },
-    });
-  }
+  const { data: categories, error } = await supabase
+    .from("designator")
+    .select("category")
+    .eq("segmentasi", segName)
+    .neq("category", null);
 
-  // --- pilih segmentasi laporan ---
-  else if (callback_query?.data.startsWith("lapor_seg_")) {
-    const chatId = callback_query.message.chat.id;
-    const segName = callback_query.data.replace("lapor_seg_", "");
+  if (error || !categories?.length) return bot.sendMessage(chatId, "❌ Tidak ada kategori di segmentasi ini.");
 
-    const { data: designators, error } = await supabase
-      .from("designator")
-      .select("designator");
+  const uniqueCategories = [...new Set(categories.map(c => c.category))];
+  const buttons = uniqueCategories.map(c => [
+    { text: c, callback_data: `lapor_cat_${encodeURIComponent(c)}` }
+  ]);
 
-    if (error || !designators?.length)
-      return bot.sendMessage(chatId, "❌ Gagal mengambil data designator.");
+  await bot.sendMessage(chatId, `📂 Segmentasi *${segName}* dipilih.\nPilih kategori:`, {
+    parse_mode: "Markdown",
+    reply_markup: { inline_keyboard: buttons }
+  });
+}
+// --- klik kategori laporan ---
+else if (callback_query?.data.startsWith("lapor_cat_")) {
+  const chatId = callback_query.message.chat.id;
+  const category = decodeURIComponent(callback_query.data.replace("lapor_cat_", ""));
+  const segName = userState[chatId]?.segmentasi;
 
-    userState[chatId] = { segmentasi: segName };
+  if (!segName) return bot.sendMessage(chatId, "⚠️ Segmentasi tidak ditemukan. Mulai dengan /start.");
 
-    const buttons = designators.map((d) => [
-      { text: d.designator, callback_data: `lapor_des_${encodeURIComponent(d.designator)}` },
-    ]);
+  const { data: designators, error } = await supabase
+    .from("designator")
+    .select("designator")
+    .eq("segmentasi", segName)
+    .eq("category", category);
 
-    await bot.sendMessage(
-      chatId,
-      `📍 Segmentasi *${segName}* dipilih.\nSekarang pilih designator:`,
-      { parse_mode: "Markdown", reply_markup: { inline_keyboard: buttons } }
-    );
-  }
+  if (error || !designators?.length) return bot.sendMessage(chatId, "❌ Tidak ada designator di kategori ini.");
+
+  const buttons = designators.map(d => [
+    { text: d.designator, callback_data: `lapor_des_${encodeURIComponent(d.designator)}` }
+  ]);
+
+  await bot.sendMessage(chatId, `📁 Kategori *${category}* dipilih.\nPilih designator:`, {
+    parse_mode: "Markdown",
+    reply_markup: { inline_keyboard: buttons }
+  });
+}
 
   // --- pilih designator laporan ---
   else if (callback_query?.data.startsWith("lapor_des_")) {
