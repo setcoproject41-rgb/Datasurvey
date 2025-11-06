@@ -269,6 +269,10 @@ Apakah Anda ingin mengirim laporan ini?
     delete userState[chatId];
     await bot.sendMessage(chatId, "❌ Laporan dibatalkan.");
   }
+      // --- fallback ---
+  else {
+    await bot.sendMessage(chatId, "Perintah tidak dikenal. Gunakan /start untuk memulai.");
+  }
 // --------------------------- MENU REPORT ---------------------------
 else if (callback_query?.data === "menu_report") {
 const chatId = callback_query.message.chat.id;
@@ -305,7 +309,7 @@ if (error || !data?.length)
 
 let msg = `📊 *REPORT\n ${segName.toUpperCase()}*\n\n`;
 
-data.forEach((d) => {
+data.forEach((d) => 
 const material = d.nilai_material ? Rp${Number(d.nilai_material).toLocaleString("id-ID")} : "-";
 const jasa = d.nilai_jasa ? Rp${Number(d.nilai_jasa).toLocaleString("id-ID")} : "-";
 const total = d.total ? Rp${Number(d.total).toLocaleString("id-ID")} : "-";
@@ -314,13 +318,12 @@ msg += 🔧 *${d.designator}*\n +
 📦 Material : ${material}\n +
 🧰 Jasa     : ${jasa}\n +
 💰 Total    : *${total}*\n\n;
-});
-
-await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
+);
 
 await bot.sendMessage(chatId, msg, { parse_mode: "Markdown" });
 
 }
+
 
 // --------------------------- MENU INFO ---------------------------
 else if (callback_query?.data === "menu_info") {
@@ -400,10 +403,6 @@ const msg = `
 
 await bot.sendMessage(chatId, msg.trim(), { parse_mode: "Markdown" });
 
-  // --- fallback ---
-  else {
-    await bot.sendMessage(chatId, "Perintah tidak dikenal. Gunakan /start untuk memulai.");
-  }
 
   res.status(200).send("OK");
 }
