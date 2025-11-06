@@ -54,7 +54,10 @@ switch (true) {
       .from("segmentasi")
       .select("id, nama_segmentasi");
     if (error || !segList?.length) return sendMessage(chatId, "❌ Gagal ambil data segmentasi.");
-    const buttons = segList.map(s => [{ text: s.nama_segmentasi, callback_data: `lapor_seg_${s.nama_segmentasi}` }]);
+    const buttons = segList.map(s => [
+  { text: s.nama_segmentasi, callback_data: `lapor_seg_${encodeURIComponent(s.nama_segmentasi)}` }
+]);
+
     return sendInlineKeyboard(chatId, "Pilih segmentasi untuk laporan:", buttons);
   }
 
