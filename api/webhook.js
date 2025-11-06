@@ -140,8 +140,6 @@ else if (callback_query?.data.startsWith("lapor_des_")) {
 
   await bot.sendMessage(chatId, "📸 Kirim foto eviden pekerjaan.");
 }
-
-
   // simpan ke tabel data_survey
   const { data: draftRow, error: insertErr } = await supabase
     .from("data_survey")
@@ -164,23 +162,6 @@ else if (callback_query?.data.startsWith("lapor_des_")) {
     console.error(insertErr);
     return bot.sendMessage(chatId, "❌ Gagal membuat draft laporan ke database.");
   }
-
-  // simpan state untuk melanjutkan proses upload foto dsb
-  userState[chatId] = {
-    draft_id: draftRow.id,
-    designator,
-    category: desData.category,
-    folder_path: folderPath,
-    foto_urls: [],
-  };
-
-  await bot.sendMessage(
-    chatId,
-    `✅ Designator *${designator}* dipilih.\n📸 Sekarang kirim foto eviden pekerjaan.`,
-    { parse_mode: "Markdown" }
-  );
-}
-
   // --- kirim foto eviden ---
   else if (message?.photo) {
     const chatId = message.chat.id;
