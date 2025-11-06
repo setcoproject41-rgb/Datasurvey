@@ -57,7 +57,6 @@ userState[chatId] = { segmentasi_id: segId };
 const { data: categories, error } = await supabase
   .from("designator")
   .select("category")
-  .eq("segmentasi", segId)
   .neq("category", null);
 
 if (error || !categories?.length)
@@ -87,7 +86,6 @@ if (!segId)
 const { data: designators, error } = await supabase
   .from("designator")
   .select("designator")
-  .eq("segmentasi", segId)
   .eq("category", category);
 
 if (error || !designators?.length)
