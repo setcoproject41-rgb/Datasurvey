@@ -78,10 +78,7 @@ await bot.sendMessage(chatId, "Pilih kategori:", {
 else if (callback_query?.data.startsWith("lapor_cat_")) {
 const chatId = callback_query.message.chat.id;
 const category = decodeURIComponent(callback_query.data.replace("lapor_cat_", ""));
-const segId = userState[chatId]?.segmentasi_id;
 
-if (!segId)
-  return bot.sendMessage(chatId, "⚠️ Segmentasi tidak ditemukan. Mulai dengan /start.");
 
 const { data: designators, error } = await supabase
   .from("designator")
