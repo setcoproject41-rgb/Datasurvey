@@ -1,9 +1,9 @@
 {
-  "name": "telegram-survey-bot",
+  "name": "telegram-vercel-bot",
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@supabase/supabase-js": "^2.0.0",
-    "node-telegram-bot-api": "^0.61.0"
+    "@supabase/supabase-js": "^2.45.0",
+    "node-telegram-bot-api": "^0.66.0"
   }
 }
