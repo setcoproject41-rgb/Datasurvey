@@ -1,4 +1,4 @@
-tata ulang untuk saya jgn rubah apapun
+
 
 import TelegramBot from "node-telegram-bot-api"; import { supabase } from "../supabaseClient.js";
 
