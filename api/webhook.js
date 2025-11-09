@@ -1,5 +1,5 @@
 // api/webhook.js
-import TelegramBot from "node-telegram-bot-api"
+import TelegramBot from "node-telegram-bot-api";
 import { supabase } from "../supabaseClient.js";
 
 const bot = new TelegramBot(process.env.BOT_TOKEN);
